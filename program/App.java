@@ -65,14 +65,18 @@ public class App {
                     ResultSet resultSetProdutos = statementProdutos.executeQuery(sqlProdutos);
 
                     resultado.append("Produtos Comprados:\n");
-                    while (resultSetProdutos.next()) {
-                        String nomeProduto = resultSetProdutos.getString("nome");
-                        Double preco = resultSetProdutos.getDouble("preco");
-                        Integer quantidade = resultSetProdutos.getInt("quantidade");
+                    if (!resultSetProdutos.isBeforeFirst()) {
+                        resultado.append("Nenhum produto comprado.\n");
+                    } else {
+                        while (resultSetProdutos.next()) {
+                            String nomeProduto = resultSetProdutos.getString("nome");
+                            Double preco = resultSetProdutos.getDouble("preco");
+                            Integer quantidade = resultSetProdutos.getInt("quantidade");
 
-                        resultado.append(" - Produto: ").append(nomeProduto)
-                                .append(", Preço: ").append(preco)
-                                .append(", Quantidade: ").append(quantidade).append("\n");
+                            resultado.append(" - Produto: ").append(nomeProduto)
+                                    .append(", Preço: ").append(preco)
+                                    .append(", Quantidade: ").append(quantidade).append("\n");
+                        }
                     }
 
                     resultado.append("\n");
@@ -113,7 +117,7 @@ public class App {
                             String quantidadeProduto = JOptionPane.showInputDialog
                                     (null, "Qual a quantidade ?");
 
-                            Produto produto = new Produto(nomeProduto, Double.parseDouble(precoProduto), Integer.parseInt(quantosProdutos));
+                            Produto produto = new Produto(nomeProduto, Double.parseDouble(precoProduto), Integer.parseInt(quantidadeProduto));
                             produtos.add(produto);
                         }
 
@@ -141,7 +145,7 @@ public class App {
                     preparedStatement.setInt(2, comprador.getIdade());
                     preparedStatement.setString(3, comprador.getGenero());
                     preparedStatement.setString(4, comprador.getTelefone());
-                    preparedStatement.setDate(5, new java.sql.Date(comprador.getDate().getTime()));
+                    preparedStatement.setDate(5, comprador.getDate() != null ? new java.sql.Date(comprador.getDate().getTime()) : null);
                     preparedStatement.executeUpdate();
 
                     // Obtém o ID gerado para o cliente
@@ -187,18 +191,38 @@ public class App {
                 // Exclusão de dados no banco de dados
                 String idCliente = JOptionPane.showInputDialog(null, "Informe o ID do cliente que deseja excluir:");
 
-                String deleteSQL = "DELETE FROM clientes WHERE id_cliente = ?";
-                PreparedStatement preparedStatement = connection.prepareStatement(deleteSQL);
-                preparedStatement.setInt(1, Integer.parseInt(idCliente));
-                preparedStatement.executeUpdate();
+                String deleteProdutosSQL = "DELETE FROM produtos WHERE id_cliente = ?";
+                PreparedStatement preparedStatementProdutos = connection.prepareStatement(deleteProdutosSQL);
+                preparedStatementProdutos.setInt(1, Integer.parseInt(idCliente));
+                preparedStatementProdutos.executeUpdate();
+
+                String deleteClienteSQL = "DELETE FROM clientes WHERE id_cliente = ?";
+                PreparedStatement preparedStatementCliente = connection.prepareStatement(deleteClienteSQL);
+                preparedStatementCliente.setInt(1, Integer.parseInt(idCliente));
+                preparedStatementCliente.executeUpdate();
 
                 JOptionPane.showMessageDialog(null, "Dados excluídos com sucesso!");
+
+                // Reseta a sequência de IDs após a exclusão
+                statement.execute("ALTER SEQUENCE clientes_id_cliente_seq RESTART WITH 1");
+
+            } else {
+                JOptionPane.showMessageDialog(null, "Opção inválida!");
             }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Erro ao acessar o banco de dados!");
         } finally {
-            // Fechamento dos recursos
-            if (resultSet != null) resultSet.close();
-            if (statement != null) statement.close();
-            if (connection != null) connection.close();
+            if (resultSet != null) {
+                resultSet.close();
+            }
+            if (statement != null) {
+                statement.close();
+            }
+            if (connection != null) {
+                connection.close();
+            }
         }
     }
 }
